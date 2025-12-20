@@ -11,73 +11,36 @@ model Basic
 global {
 	int placeRange <- 10;
 	int guestNum <- 50;
-	float total_happiness;
 	list<place> place_list;
-	list<guest>party_list;
-	list<guest>introverted_list;
-	list<guest>observer_list;
-	list<guest>vegan_list;
-	list<guest>meat_list;
 	init {
 		//Create 2 different places
 		create place number: 2 returns: places;
 		ask places[0] {
-			set type <- 'bar';
-			set location <- point(20,20);
+			type <- 'bar';
+			location <- {20,20};
+			noise_level <- 0.8;
 		}
 		ask places[1] {
-			set type <- 'concert';
-			set location <- point(80,80);
+			type <- 'concert';
+			location <- {80,80};
+			noise_level <- 0.9;
+			current_band <- one_of(['rock', 'pop', 'jazz', 'classical', 'electronic']);
 		}
 		place_list <- places;
 		
-		//Create 5 types of guests.
-		create guest number:guestNum returns: Guests;
-		loop i from: 0 to: guestNum-1{
-			ask Guests[i]{
-				if(i>=0 and i<10){
-					set type <- 'party';
-					//set place <- 'bar';
-					set sociability <- rnd(0.5,0.9);
-					set generosity <- rnd(0.4,0.8);
-					set tolerance <- rnd(0.2,0.8);
-					
-				} else if(i>=10 and i<20){
-					set type <- 'introverted';
-					//set place <- 'bar';
-					set sociability <- rnd(0.1,0.5);
-					set generosity <- rnd(0.4,0.8);
-					set tolerance <- rnd(0.2,0.8);
-				} else if(i>=20 and i<30){
-					set type <- 'observer';
-					set sociability <- rnd(0.1,0.9);
-					set generosity <- rnd(0.4,0.8);
-					set tolerance <- rnd(0.2,0.8);
-				} else if(i>=30 and i <40){
-					set type <- 'vegan';
-					set sociability <- rnd(0.1,0.9);
-					set generosity <- rnd(0.4,0.8);
-					set tolerance <- rnd(0.2,0.8);
-				} else{
-					set type <- 'meat';
-					set sociability <- rnd(0.1,0.9);
-					set generosity <- rnd(0.4,0.8);
-					set tolerance <- rnd(0.2,0.8);
-				}
+		//Create guests.
+		create guest number: guestNum {
+			archetype <- one_of(["Party Animal", "Introvert", "Music Lover", "Foodie", "Philanthropist"]);
+			if (archetype = "Party Animal") {
+				sociability <- rnd(0.7, 1.0);
+			} else if (archetype = "Introvert") {
+				sociability <- rnd(0.0, 0.3);
+			} else {
+				sociability <- rnd(0.3, 0.7);
 			}
-		}
-		loop i from: 0 to: guestNum-1{
-			if(i>=0 and i<10){
-				party_list <- party_list + Guests[i];
-			} else if(i>=10 and i<20){
-				introverted_list <- introverted_list + Guests[i];
-			} else if(i>=20 and i<30){
-				observer_list <- observer_list + Guests[i];
-			} else if(i>=30 and i <40){
-				vegan_list <- vegan_list + Guests[i];
-			} else{
-				meat_list <- meat_list + Guests[i];
-			}
+			generosity <- rnd(0.1, 0.9);
+			musical_taste <- one_of(['rock', 'pop', 'jazz', 'classical', 'electronic']);
+			favorite_food <- one_of(['pizza', 'burger', 'sushi', 'salad', 'pasta']);
 		}
 	}
 
@@ -128,178 +91,35 @@ species guest skills:[moving,fipa] {
 	}
 	
 //Below are the code for the interactions between different guests.
-	string type <- nil;
 	float sociability;
 	float generosity;
-	float tolerance;
-	float happiness <- 1.0;
+	string musical_taste;
+	string favorite_food;
+	string archetype;
+	float happiness <- 0.5;
 	
-	reflex act{
-		//If it is in the bar
-		if(cur_place = place_list[0]){
-			if(type = 'party'){
-				if(sociability >= 0.5 and generosity>=0.5){
-					do start_conversation to: introverted_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'want to have drink?'];
-					write name+ ': I invited introverted to drink';
-				}
-				if(sociability >= 0.6){
-					do start_conversation to: observer_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'want to dance?'];
-					write name+ ': I invited observers to drink';
-				}
+	reflex interact when: cur_place != nil and flip(sociability * 0.1) {
+		guest other <- one_of(guest at_distance 5);
+		if (other != nil and other != self) {
+			// A simple interaction model based on archetypes
+			bool compatible <- false;
+			if (archetype = "Party Animal" and other.archetype = "Party Animal") {
+				compatible <- true;
+			} else if (archetype = "Introvert" and other.archetype = "Introvert") {
+				compatible <- true;
+			} else if (archetype = "Music Lover" and other.archetype = "Music Lover" and musical_taste = other.musical_taste) {
+				compatible <- true;
+			} else if (archetype = "Foodie" and other.archetype = "Foodie" and favorite_food = other.favorite_food) {
+				compatible <- true;
 			}
-			else if(type = 'observer'){
-				if(sociability >= 0.5){
-					do start_conversation to: meat_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'what brings you here?'];
-					write name+ ': I ask meat_eater';
-				}
-			}
-			else if(type = 'vegan'){
-				if(sociability >= 0.5 and generosity>=0.5){
-					do start_conversation to: introverted_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'want to small talk?'];
-					write name+ ': I invited introverted to small talk';
-				}
-			}
-			else if(type = 'meat'){
-				if(sociability >= 0.5 and generosity>=0.5){
-					do start_conversation to: vegan_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'want to have steak?'];
-					write name+ ': I invited vegan_eater to have steak';
-				}
-			}
-		}
-		//If it is in the concert
-		else if(cur_place = place_list[1]){
-			if(type = 'party'){
-				if(sociability >= 0.6){
-					do start_conversation to: vegan_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'do you like the music?'];
-				}
-			}
-			else if(type = 'introverted'){
-				if(sociability >= 0.4){
-					do start_conversation to: observer_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'what do you think of the band?'];
-				}
-			}
-			else if(type = 'observer'){
-				if(sociability >= 0.5){
-					do start_conversation to: introverted_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'you must be enjoying it.'];
-				}
-			}
-			else if(type = 'vegan'){
-				if(sociability >= 0.5 and generosity>=0.5){
-					do start_conversation to: meat_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'the salad is amazing!'];
-				}
-			}
-			else if(type = 'meat'){
-				if(sociability >= 0.5 and generosity>=0.5){
-					do start_conversation to: party_list protocol: 'no-protocol' performative: 'inform' contents:[cur_place,'have some burgers together?'];
-				}
-			}
-		}
-	}
-	reflex react when: !empty(informs){
-		int numberOfMsgs <- length(informs);
-		loop informMsg over: informs{
-			//If they are in the same place, then react.
-			if(cur_place = informMsg.contents[0]){
-				if(type = 'introverted'){
-					if(informMsg.contents[1] = 'want to have drink?'){
-						if(sociability >= 0.4 and tolerance >= 0.5){
-							do end_conversation message: informMsg contents: ['Sure, thank you!'];
-							happiness <- happiness + 0.3;
-						} else if(tolerance <0.5){
-							do end_conversation message: informMsg contents: ['No!'];
-							happiness <- happiness - 0.5;
-						}
-					}
-					else if(informMsg.contents[1] = 'want to small talk?'){
-						if(sociability >= 0.3){
-							do end_conversation message: informMsg contents: ['Sure, thank you!'];
-							happiness <- happiness + 0.5;
-							//write name+ ': I start a small talk with ' + agent(informMsg.sender).name;
-						} else{
-							do end_conversation message: informMsg contents: ['Not now, but thanks.'];
-							happiness <- happiness + 0.1;
-						}
-					}
-					else if(informMsg.contents[1] = 'you must be enjoying it.'){
-						if(tolerance >= 0.3){
-							do end_conversation message: informMsg contents: ['Yes, how do you know?'];
-							happiness <- happiness + 0.4;
-						} else{
-							do end_conversation message: informMsg contents: ['No, it is not good.'];
-							happiness <- happiness - 0.2;
-						}
-					}
-				}
-				else if(type = 'party'){
-					if(informMsg.contents[1] = 'have some burgers together?'){
-						if(tolerance >= 0.3){
-							do end_conversation message: informMsg contents: ['Sure, thank you!'];
-							happiness <- happiness + 0.5;
-						}
-						else{
-							do end_conversation message: informMsg contents: ['No, I am full'];
-							happiness <- happiness + 0.1;
-						}
-					}
-				}
-				else if(type = 'observer'){
-					if(informMsg.contents[1] = 'want to dance?'){
-						if(sociability >= 0.4){
-							do end_conversation message: informMsg contents: ['Sure, come on!'];
-							happiness <- happiness + 0.4;
-						} else{
-							do end_conversation message: informMsg contents: ['No, thanks'];
-							happiness <- happiness - 0.1;
-						}
-					}
-					else if(informMsg.contents[1] = 'what do you think of the band?'){
-						if(tolerance >= 0.3){
-							do end_conversation message: informMsg contents: ['It is excellent!'];
-							happiness <- happiness + 0.4;
-						} else{
-							do end_conversation message: informMsg contents: ['Not good enough'];
-							happiness <- happiness + 0.1;
-						}
-					}
-				}
-				else if(type = 'vegan'){
-					if(informMsg.contents[1] = 'want to have steak?'){
-						if(tolerance >= 0.4){
-							do end_conversation message: informMsg contents: ['Thanks, but I do not have meat'];
-							happiness <- happiness + 0.1;
-						} else{
-							do end_conversation message: informMsg contents: ['No!!'];
-							happiness <- happiness - 0.4;
-						}
-					} else if(informMsg.contents[1] = 'do you like the music?'){
-						if(tolerance >= 0.3){
-							do end_conversation message: informMsg contents: ['Yes, I do.'];
-							happiness <- happiness + 0.4;
-						} else{
-							do end_conversation message: informMsg contents: ['No, not my type.'];
-							happiness <- happiness - 0.1;
-						}
-					}
-				}
-				else if(type = 'meat'){
-					if(informMsg.contents[1] = 'what brings you here?'){
-						if(sociability >= 0.3){
-							do end_conversation message: informMsg contents: ['The food here.'];
-							happiness <- happiness + 0.4;
-						} else if(tolerance <= 0.4){
-							do end_conversation message: informMsg contents: ['Mind your own bussiness.'];
-							happiness <- happiness - 0.2;
-						}
-					} else if(informMsg.contents[1] = 'the salad is amazing!'){
-						if(tolerance >= 0.4){
-							do end_conversation message: informMsg contents: ['Yes, but I do not have salad.'];
-							happiness <- happiness + 0.1;
-						} else{
-							do end_conversation message: informMsg contents: ['No, it is unpalatable.'];
-							happiness <- happiness - 0.4;
-						}
-					}
-				}
+
+			if (compatible) {
+				happiness <- happiness + 0.1;
+				other.happiness <- other.happiness + 0.1;
+				write name + " had a nice chat with " + other.name;
+			} else {
+				happiness <- happiness - 0.05;
+				other.happiness <- other.happiness - 0.05;
 			}
 		}
 	}
@@ -317,38 +137,58 @@ species guest skills:[moving,fipa] {
 //		}
 //	}
 	aspect base {
-		if(type = 'party'){
-			draw circle(1) color: #red;
-		} else if(type = 'introverted'){
-			draw circle(1) color: #black;
-		} else if(type = 'observer'){
-			draw circle(1) color: #pink;
-		} else if(type = 'meat'){
-			draw circle(1) color: #blue;
-		} else{
-			draw circle(1) color: #green;
+		rgb color;
+		if (archetype = "Party Animal") {
+			color <- #red;
+		} else if (archetype = "Introvert") {
+			color <- #green;
+		} else if (archetype = "Music Lover") {
+			color <- #yellow;
+		} else if (archetype = "Foodie") {
+			color <- #purple;
+		} else if (archetype = "Philanthropist") {
+			color <- #orange;
 		}
+		draw circle(1.5) color: color border: #black;
+		draw string(archetype) color: #white size: 8 at: {location.x, location.y - 2};
+		draw string("H:" + round(happiness*100)/100.0) color: #white size: 8 at: {location.x, location.y + 2};
 	}
 }
 
 species place {
-	
 	string type;
-	
+	float noise_level;
+	string current_band;
+
 	aspect base {
-		draw square(20) border: #black;
-		draw type color: #white;
+		draw square(15) color: (type = "bar" ? #lightgray : #lightyellow) border: #black;
+		draw type color: #black size: 10 at: {location.x - 4, location.y - 8};
+		if (current_band != nil) {
+			draw "♫ " + current_band + " ♫" color: #black size: 10 at: {location.x - 10, location.y + 8};
+		}
 	}
 }
 
 experiment guests_simulation {
 	output {
 		display my_display {
-			// todo: table of guest, cur_place, state, stay_time
-			// todo: happiness graph
-			// todo: graph of happiness of each guest
 			species place aspect: base;
 			species guest aspect: base;
 		}
+
+//		chart "Global Happiness" type: series {
+//			data "Average" value: guest mean (each.happiness) color: #blue;
+//			data "Party Animal" value: guest with (each.archetype = "Party Animal") mean (each.happiness) color: #red;
+//			data "Introvert" value: guest with (each.archetype = "Introvert") mean (each.happiness) color: #green;
+//			data "Music Lover" value: guest with (each.archetype = "Music Lover") mean (each.happiness) color: #yellow;
+//			data "Foodie" value: guest with (each.archetype = "Foodie") mean (each.happiness) color: #purple;
+//			data "Philanthropist" value: guest with (each.archetype = "Philanthropist") mean (each.happiness) color: #orange;
+//		}
+//
+//		chart "Agent Distribution" type: pie {
+//			data "Bar" value: length(guest where (each.cur_place != nil and each.cur_place.type = "bar")) color: #lightgray;
+//			data "Concert" value: length(guest where (each.cur_place != nil and each.cur_place.type = "concert")) color: #lightyellow;
+//			data "Roaming" value: length(guest where (each.cur_place = nil)) color: #lightblue;
+//		}
 	}
 }
