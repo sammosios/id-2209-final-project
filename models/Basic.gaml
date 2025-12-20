@@ -344,6 +344,7 @@ species place {
 experiment guests_simulation {
 	output {
 		display my_display {
+			// pavlos was here
 			// todo: table of guest, cur_place, state, stay_time
 			// todo: happiness graph
 			// todo: graph of happiness of each guest
