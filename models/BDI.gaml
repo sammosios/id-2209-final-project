@@ -4,16 +4,21 @@ global {
 	int guestNum <- 50;
 	list<place> place_list;
 
+	// Beliefs
 	predicate at_bar         <- new_predicate("at_bar");
 	predicate at_concert     <- new_predicate("at_concert");
+	predicate at_library     <- new_predicate("at_library");
+	// Desires
 	predicate want_socialize <- new_predicate("want_socialize");
+	// Intentions
 	predicate go_bar         <- new_predicate("go_bar");
 	predicate go_concert     <- new_predicate("go_concert");
+	predicate go_library     <- new_predicate("go_library");
 	predicate socialize      <- new_predicate("socialize");
 	predicate stay           <- new_predicate("stay");
 
 	init {
-		create place number: 2 returns: places;
+		create place number: 3 returns: places;
 		ask places[0] {
 			type <- "bar";
 			location <- {20,20};
@@ -21,6 +26,10 @@ global {
 		ask places[1] {
 			type <- "concert";
 			location <- {80,80};
+		}
+		ask places[2] {
+			type <- "library";
+			location <- {85,25};
 		}
 		place_list <- places;
 
@@ -31,10 +40,46 @@ global {
 species guest skills: [moving, fipa] control: simple_bdi {
 	place current_place <- nil;
 	place target_place <- nil;
-	float sociability <- rnd(0.1, 0.9);
+	float initiative;
+	float sociability;
 	float happiness <- 0.5;
+	string archetype;
+	bool is_vegan;
+	list<predicate> fav_place_intentions;
 
 	init {
+		// Assign archetype
+		archetype <- one_of([
+			"Party Animal",
+			"Chill Introvert",
+			"Vegan",
+			"Sociable",
+			"Cultured Trivia Lover"
+		]);
+		is_vegan <- (archetype = "Vegan");
+
+		if (archetype = "Party Animal") {
+			initiative <- rnd(0.7, 1.0);
+			sociability <- rnd(0.7, 1.0);
+			fav_place_intentions <- [go_bar, go_concert];
+		} else if (archetype = "Chill Introvert") {
+			initiative <- rnd(0.2, 0.5);
+			sociability <- rnd(0.2, 0.5);
+			fav_place_intentions <- [go_library, go_bar];
+		} else if (archetype = "Vegan") {
+			initiative <- rnd(0.4, 0.8);
+			sociability <- rnd(0.4, 0.8);
+			fav_place_intentions <- [go_library, go_bar, go_concert];
+		} else if (archetype = "Sociable") {
+			initiative <- rnd(0.5, 0.9);
+			sociability <- rnd(0.7, 1.0);
+			fav_place_intentions <- [go_library, go_bar, go_concert];
+		} else if (archetype = "Cultured Trivia Lover") {
+			initiative <- rnd(0.3, 0.7);
+			sociability <- rnd(0.5, 0.8);
+			fav_place_intentions <- [go_library, go_bar];
+		}
+
 		do add_desire(want_socialize);
 	}
 
@@ -42,15 +87,28 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		place p <- first(place_list where (each.location distance_to self.location < 2.0));
 		if (p != nil) {
 			current_place <- p;
-			if (p.type = "bar") {
-				do replace_belief(at_concert, at_bar);
-			} else if (p.type = "concert") {
-				do replace_belief(at_bar, at_concert);
+			switch p.type {
+				match "bar" {
+					do remove_belief(at_concert);
+					do remove_belief(at_library);
+					do add_belief(at_bar);
+				}
+				match "concert" {
+					do remove_belief(at_bar);
+					do remove_belief(at_library);
+					do add_belief(at_concert);
+				}
+				match "library" {
+					do remove_belief(at_bar);
+					do remove_belief(at_concert);
+					do add_belief(at_library);
+				}
 			}
 		} else {
 			current_place <- nil;
 			do remove_belief(at_bar);
 			do remove_belief(at_concert);
+			do remove_belief(at_library);
 		}
 	}
 
@@ -71,13 +129,9 @@ species guest skills: [moving, fipa] control: simple_bdi {
 				do add_intention(socialize);
 				write name + " intends to socialize";
 			} else {
-				if (flip(0.5)) {
-					do add_intention(go_bar);
-					write name + " intends to go to the bar";
-				} else {
-					do add_intention(go_concert);
-					write name + " intends to go to the concert";
-				}
+				predicate intention <- one_of(fav_place_intentions);
+				do add_intention(intention);
+				write name + " intends to: " + intention;
 			}
 		} else {
 			do add_intention(stay);
@@ -91,6 +145,15 @@ species guest skills: [moving, fipa] control: simple_bdi {
 
 		if (distance_to(self, target_place) < 1) {
 			do remove_intention(go_bar, true);
+		}
+	}
+	
+	plan execute_go_library intention: go_library {
+		target_place <- one_of(place_list where (each.type = "library"));
+		do goto target: target_place.location speed: 1.5;
+
+		if (distance_to(self, target_place) < 1) {
+			do remove_intention(go_library, true);
 		}
 	}
 
