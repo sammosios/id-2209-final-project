@@ -47,6 +47,8 @@ species guest skills: [moving, fipa] control: simple_bdi {
 	bool is_vegan;
 	list<predicate> fav_place_intentions;
 
+	int socialize_cooldown <- 0; // cooldown counter
+
 	init {
 		// Assign archetype
 		archetype <- one_of([
@@ -118,14 +120,25 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		}
 	}
 
-	reflex generate_desires {
-		if (sociability > 0.7 and !(has_desire(want_socialize)) ) {
+//	reflex generate_desires {
+//		if (sociability > 0.7 and !(has_desire(want_socialize)) ) {
+//			do add_desire(want_socialize);
+//			write name + " is eager to socialize";
+//		}
+//		else if (sociability > 0.4 and !(has_desire(want_socialize)) ) {
+//			do add_desire(want_socialize);
+//			write name + " will socialize if asked";
+//		}
+//	}
+
+	reflex socialize_cooldown_restore when: !has_desire(want_socialize) {
+		socialize_cooldown <- socialize_cooldown + 1;
+		if (socialize_cooldown > 20) { // cooldown period, e.g., 20 steps
+			if (flip(sociability)) {
 			do add_desire(want_socialize);
-			write name + " is eager to socialize";
+				write name + " regains desire to socialize after cooldown.";
 		}
-		else if (sociability > 0.4 and !(has_desire(want_socialize)) ) {
-			do add_desire(want_socialize);
-			write name + " will socialize if asked";
+			socialize_cooldown <- 0;
 		} 
 	}
 
