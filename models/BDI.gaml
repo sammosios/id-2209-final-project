@@ -58,26 +58,32 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		]);
 		is_vegan <- (archetype = "Vegan");
 
-		if (archetype = "Party Animal") {
-			initiative <- rnd(0.7, 1.0);
-			sociability <- rnd(0.7, 1.0);
-			fav_place_intentions <- [go_bar, go_concert];
-		} else if (archetype = "Chill Introvert") {
-			initiative <- rnd(0.2, 0.5);
-			sociability <- rnd(0.2, 0.5);
-			fav_place_intentions <- [go_library, go_bar];
-		} else if (archetype = "Vegan") {
-			initiative <- rnd(0.4, 0.8);
-			sociability <- rnd(0.4, 0.8);
-			fav_place_intentions <- [go_library, go_bar, go_concert];
-		} else if (archetype = "Sociable") {
-			initiative <- rnd(0.5, 0.9);
-			sociability <- rnd(0.7, 1.0);
-			fav_place_intentions <- [go_library, go_bar, go_concert];
-		} else if (archetype = "Cultured Trivia Lover") {
-			initiative <- rnd(0.3, 0.7);
-			sociability <- rnd(0.5, 0.8);
-			fav_place_intentions <- [go_library, go_bar];
+		switch archetype {
+			match "Party Animal" {
+				initiative <- rnd(0.7, 1.0);
+				sociability <- rnd(0.7, 1.0);
+				fav_place_intentions <- [go_bar, go_concert];
+			}
+			match "Chill Introvert" {
+				initiative <- rnd(0.2, 0.5);
+				sociability <- rnd(0.2, 0.5);
+				fav_place_intentions <- [go_library, go_bar];
+			}
+			match "Vegan" {
+				initiative <- rnd(0.4, 0.8);
+				sociability <- rnd(0.4, 0.8);
+				fav_place_intentions <- [go_library, go_bar, go_concert];
+			}
+			match "Sociable" {
+				initiative <- rnd(0.5, 0.9);
+				sociability <- rnd(0.7, 1.0);
+				fav_place_intentions <- [go_library, go_bar, go_concert];
+			}
+			match "Cultured Trivia Lover" {
+				initiative <- rnd(0.3, 0.7);
+				sociability <- rnd(0.5, 0.8);
+				fav_place_intentions <- [go_library, go_bar];
+			}
 		}
 
 		do add_desire(want_socialize);
@@ -131,7 +137,7 @@ species guest skills: [moving, fipa] control: simple_bdi {
 			} else {
 				predicate intention <- one_of(fav_place_intentions);
 				do add_intention(intention);
-				write name + " intends to: " + intention;
+				write name + " intends to: " + intention.name;
 			}
 		} else {
 			do add_intention(stay);
@@ -192,7 +198,7 @@ species guest skills: [moving, fipa] control: simple_bdi {
 				if (flip(sociability)) {
 					do accept_proposal message: msg contents: ["yes"];
 					write name + " accepted the proposal from " + msg.sender;
-					happiness <- happiness + 0.1;
+					happiness <- min(1.0, happiness + 0.1);
 				} else {
 					do reject_proposal message: msg contents: ["no"];
 					write name + " rejected the proposal from " + msg.sender;
@@ -204,14 +210,14 @@ species guest skills: [moving, fipa] control: simple_bdi {
 	reflex handle_accept_proposals when: !empty(accept_proposals) {
 		loop msg over: accept_proposals {
 			write name + " received an acceptance from " + msg.sender;
-			happiness <- happiness + 0.2;
+			happiness <- min(1.0, happiness + 0.2);
 		}
 	}
 
 	reflex handle_reject_proposals when: !empty(reject_proposals) {
 		loop msg over: reject_proposals {
 			write name + " received a rejection from " + msg.sender;
-			happiness <- happiness - 0.1;
+			happiness <- max(0.0, happiness - 0.1);
 		}
 	}
 
