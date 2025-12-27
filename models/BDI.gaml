@@ -135,11 +135,11 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		socialize_cooldown <- socialize_cooldown + 1;
 		if (socialize_cooldown > 20) { // cooldown period, e.g., 20 steps
 			if (flip(sociability)) {
-			do add_desire(want_socialize);
+				do add_desire(want_socialize);
 				write name + " regains desire to socialize after cooldown.";
-		}
+			}
 			socialize_cooldown <- 0;
-		} 
+		}
 	}
 
 	reflex select_intention when: get_current_intention() = nil {
@@ -190,9 +190,9 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		if (pal != nil) {
 			if (flip(initiative)) {
 				write name + " (initiative: " + round(initiative*100)/100.0 + ") proposes to chat with " + pal.name;
-			do start_conversation to: [pal] protocol: "fipa-request" performative: "propose" contents: ["chat"];
-			do remove_intention(socialize, true);
-			do remove_desire(want_socialize);
+				do start_conversation to: [pal] protocol: "fipa-request" performative: "propose" contents: ["chat"];
+				do remove_intention(socialize, true);
+				do remove_desire(want_socialize);
 			} else {
 				write name + " (initiative: " + round(initiative*100)/100.0 + ") decides not to initiate conversation now.";
 			}
@@ -210,16 +210,24 @@ species guest skills: [moving, fipa] control: simple_bdi {
 
 	reflex handle_proposes when: !empty(proposes) {
 		loop msg over: proposes {
-			if (msg.contents[0] = "chat") {
+			if (
+				msg.contents[0] = "chat" and
+				(get_current_intention() != nil) and
+				(get_current_intention().predicate = socialize)
+			) {
 				write name + " received a chat proposal from " + msg.sender;
 				if (flip(sociability)) {
 					do accept_proposal message: msg contents: ["yes"];
 					write name + " accepted the proposal from " + msg.sender;
 					happiness <- min(1.0, happiness + 0.1);
+					do remove_intention(socialize, true);
+					do remove_desire(want_socialize);
 				} else {
 					do reject_proposal message: msg contents: ["no"];
 					write name + " rejected the proposal from " + msg.sender;
 				}
+			} else if (msg.contents[0] = "chat") {
+				write name + " received a chat proposal from " + msg.sender + ", but does not have 'socialize' intention.";
 			}
 		}
 	}
