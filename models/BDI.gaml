@@ -188,10 +188,14 @@ species guest skills: [moving, fipa] control: simple_bdi {
 	plan execute_socialize intention: socialize {
 		guest pal <- one_of(guest at_distance 5 where (each != self));
 		if (pal != nil) {
-			write name + " proposes to chat with " + pal.name;
+			if (flip(initiative)) {
+				write name + " (initiative: " + round(initiative*100)/100.0 + ") proposes to chat with " + pal.name;
 			do start_conversation to: [pal] protocol: "fipa-request" performative: "propose" contents: ["chat"];
 			do remove_intention(socialize, true);
 			do remove_desire(want_socialize);
+			} else {
+				write name + " (initiative: " + round(initiative*100)/100.0 + ") decides not to initiate conversation now.";
+			}
 		} else {
 			do wander;
 		}
