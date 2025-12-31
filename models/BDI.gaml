@@ -1,7 +1,7 @@
 model BDI_Social_Event_Skeleton
 
 global {
-	int guestNum <- 30;
+	int guestNum <- 50;
 	list<place> place_list;
 	float happiness_increment <- 0.05;
 	float global_happiness <- 0.5;
