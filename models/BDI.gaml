@@ -120,31 +120,31 @@ species guest skills: [moving, fipa] control: simple_bdi {
 		}
 	}
 
-//	reflex generate_desires {
-//		if (sociability > 0.7 and !(has_desire(want_socialize)) ) {
-//			do add_desire(want_socialize);
-//			write name + " is eager to socialize";
-//		}
-//		else if (sociability > 0.4 and !(has_desire(want_socialize)) ) {
-//			do add_desire(want_socialize);
-//			write name + " will socialize if asked";
-//		}
-//	}
-
-	reflex socialize_cooldown_restore when: !has_desire(want_socialize) {
-		socialize_cooldown <- socialize_cooldown + 1;
-		if (socialize_cooldown > 20) { // cooldown period, e.g., 20 steps
-			if (flip(sociability)) {
-				do add_desire(want_socialize);
-				write name + " regains desire to socialize after cooldown.";
-			}
-			socialize_cooldown <- 0;
+	reflex generate_desires {
+		if (sociability > 0.7 and !(has_desire(want_socialize)) ) {
+			do add_desire(want_socialize);
+			write name + " is eager to socialize";
+		}
+		else if (sociability > 0.4 and !(has_desire(want_socialize)) ) {
+			do add_desire(want_socialize);
+			write name + " will socialize if asked";
 		}
 	}
 
+//	reflex socialize_cooldown_restore when: !has_desire(want_socialize) {
+//		socialize_cooldown <- socialize_cooldown + 1;
+//		if (socialize_cooldown > 20) { // cooldown period, e.g., 20 steps
+//			if (flip(sociability)) {
+//				do add_desire(want_socialize);
+//				write name + " regains desire to socialize after cooldown.";
+//			}
+//			socialize_cooldown <- 0;
+//		}
+//	}
+
 	reflex select_intention when: get_current_intention() = nil {
 		if (has_desire(want_socialize)) {
-			if (current_place != nil) {
+			if (current_place != nil and flip(max(happiness, 0.3))) {
 				do add_intention(socialize);
 				write name + " intends to socialize";
 			} else {
@@ -164,6 +164,7 @@ species guest skills: [moving, fipa] control: simple_bdi {
 
 		if (distance_to(self, target_place) < 1) {
 			do remove_intention(go_bar, true);
+			do add_intention(socialize);
 		}
 	}
 	
@@ -173,6 +174,7 @@ species guest skills: [moving, fipa] control: simple_bdi {
 
 		if (distance_to(self, target_place) < 1) {
 			do remove_intention(go_library, true);
+			do add_intention(socialize);
 		}
 	}
 
@@ -182,6 +184,7 @@ species guest skills: [moving, fipa] control: simple_bdi {
 
 		if (distance_to(self, target_place) < 1) {
 			do remove_intention(go_concert, true);
+			do add_intention(socialize);
 		}
 	}
 
@@ -211,17 +214,15 @@ species guest skills: [moving, fipa] control: simple_bdi {
 	reflex handle_proposes when: !empty(proposes) {
 		loop msg over: proposes {
 			if (
-				msg.contents[0] = "chat" and
-				(get_current_intention() != nil) and
-				(get_current_intention().predicate = socialize)
+				msg.contents[0] = "chat"
 			) {
 				write name + " received a chat proposal from " + msg.sender;
-				if (flip(sociability)) {
-					do accept_proposal message: msg contents: ["yes"];
-					write name + " accepted the proposal from " + msg.sender;
-					happiness <- min(1.0, happiness + 0.1);
-					do remove_intention(socialize, true);
-					do remove_desire(want_socialize);
+				if 	(flip(sociability) and 
+					(get_current_intention() != nil) and
+					(get_current_intention().predicate = socialize)) {
+						do accept_proposal message: msg contents: ["yes"];
+						write name + " accepted the proposal from " + msg.sender;
+						happiness <- min(1.0, happiness + 0.1);
 				} else {
 					do reject_proposal message: msg contents: ["no"];
 					write name + " rejected the proposal from " + msg.sender;
@@ -230,19 +231,21 @@ species guest skills: [moving, fipa] control: simple_bdi {
 				write name + " received a chat proposal from " + msg.sender + ", but does not have 'socialize' intention.";
 			}
 		}
+		do remove_intention(socialize, true);
+		do remove_desire(want_socialize);
 	}
 
 	reflex handle_accept_proposals when: !empty(accept_proposals) {
 		loop msg over: accept_proposals {
 			write name + " received an acceptance from " + msg.sender;
-			happiness <- min(1.0, happiness + 0.2);
+			happiness <- min(1.0, happiness + 0.15);
 		}
 	}
 
 	reflex handle_reject_proposals when: !empty(reject_proposals) {
 		loop msg over: reject_proposals {
 			write name + " received a rejection from " + msg.sender;
-			happiness <- max(0.0, happiness - 0.1);
+			happiness <- max(0.0, happiness - 0.02);
 		}
 	}
 
